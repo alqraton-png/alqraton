@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alqraton Admin</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <main class="admin-shell">
+        <section id="login-view" class="login-panel">
+            <span class="eyebrow">ALQRATON / ADMIN</span>
+            <h1>İdarə panelinə giriş</h1>
+            <p class="muted">Məhsulları və əlaqə mesajlarını buradan idarə edin.</p>
+            <form id="login-form">
+                <label>Email<input type="email" name="email" value="admin@alqraton.com" required></label>
+                <label>Parol<input type="password" name="password" required></label>
+                <button type="submit">Daxil ol</button>
+            </form>
+            <p id="login-error" class="error" role="alert"></p>
+        </section>
+
+        <section id="dashboard-view" class="dashboard" hidden>
+            <header class="dashboard-header">
+                <div>
+                    <span class="eyebrow">ALQRATON / ADMIN</span>
+                    <h1>İdarə paneli</h1>
+                </div>
+                <button id="logout-button" class="secondary-button" type="button">Çıxış</button>
+            </header>
+
+            <div class="dashboard-grid">
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div><span class="eyebrow">01</span><h2>Məhsul əlavə et</h2></div>
+                    </div>
+                    <form id="product-form">
+                        <label>Məhsul adı<input type="text" name="name" placeholder="Məsələn: Alqraton Platform" required></label>
+                        <label>Açıqlama<textarea name="description" rows="5" placeholder="Məhsul haqqında qısa məlumat" required></textarea></label>
+                        <button type="submit">Məhsulu əlavə et</button>
+                    </form>
+                    <p id="product-status" class="status" role="status"></p>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-heading">
+                        <div><span class="eyebrow">02</span><h2>Məhsullar</h2></div>
+                        <button id="refresh-products" class="text-button" type="button">Yenilə</button>
+                    </div>
+                    <div id="products-list" class="records"><p class="muted">Yüklənir...</p></div>
+                </section>
+
+                <section class="panel messages-panel">
+                    <div class="panel-heading">
+                        <div><span class="eyebrow">03</span><h2>Əlaqə mesajları</h2></div>
+                        <button id="refresh-messages" class="text-button" type="button">Yenilə</button>
+                    </div>
+                    <div id="messages-list" class="records"><p class="muted">Yüklənir...</p></div>
+                </section>
+            </div>
+        </section>
+    </main>
+    <script>
+        const loginView = document.querySelector('#login-view');
+        const dashboardView = document.querySelector('#dashboard-view');
+        const loginForm = document.querySelector('#login-form');
+        const loginError = document.querySelector('#login-error');
+        const tokenKey = 'alqraton_admin_token';
+        let token = localStorage.getItem(tokenKey);
+
+        function apiRequest(url, options = {}) {
+            return fetch(url, {
+                ...options,
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) }
+            }).then(async (response) => {
+                const data = response.status === 204 ? null : await response.json();
+                if (!response.ok) throw new Error(data?.error || 'Əməliyyat uğursuz oldu.');
+                return data;
+            });
+        }
+
+        function showDashboard() {
+            loginView.hidden = true;
+            dashboardView.hidden = false;
+            loadProducts();
+            loadMessages();
+        }
+
+        function showLogin() {
+            token = null;
+            localStorage.removeItem(tokenKey);
+            loginView.hidden = false;
+            dashboardView.hidden = true;
+        }
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            loginError.textContent = '';
+            const body = Object.fromEntries(new FormData(loginForm));
+            try {
+                const result = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(async (response) => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    return data;
+                });
+                if (result.user.role !== 'admin') throw new Error('Bu hesab admin deyil.');
+                token = result.token;
+                localStorage.setItem(tokenKey, token);
+                showDashboard();
+            } catch (error) {
+                loginError.textContent = error.message;
+            }
+        });
+
+        async function loadProducts() {
+            const list = document.querySelector('#products-list');
+            try {
+                const products = await apiRequest('/api/products');
+                list.innerHTML = products.length ? products.map((product) => `<article class="record"><div><strong>${escapeHtml(product.name)}</strong><p>${escapeHtml(product.description)}</p></div><button class="delete-button" data-id="${product.id}" type="button">Sil</button></article>`).join('') : '<p class="muted">Hələ məhsul yoxdur.</p>';
+                list.querySelectorAll('.delete-button').forEach((button) => button.addEventListener('click', () => deleteProduct(button.dataset.id)));
+            } catch (error) { list.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`; }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Bu məhsul silinsin?')) return;
+            try { await apiRequest(`/api/products/${id}`, { method: 'DELETE' }); loadProducts(); }
+            catch (error) { alert(error.message); }
+        }
+
+        async function loadMessages() {
+            const list = document.querySelector('#messages-list');
+            try {
+                const messages = await apiRequest('/api/messages');
+                list.innerHTML = messages.length ? messages.map((item) => `<article class="message"><strong>${escapeHtml(item.subject)}</strong><span>${escapeHtml(item.name)} · ${escapeHtml(item.email)}</span><p>${escapeHtml(item.message)}</p></article>`).join('') : '<p class="muted">Hələ mesaj yoxdur.</p>';
+            } catch (error) { list.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`; }
+        }
+
+        function escapeHtml(value) { return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character])); }
+
+        document.querySelector('#product-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const status = document.querySelector('#product-status');
+            try { await apiRequest('/api/products', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) }); form.reset(); status.textContent = 'Məhsul əlavə edildi.'; loadProducts(); }
+            catch (error) { status.textContent = error.message; }
+        });
+        document.querySelector('#refresh-products').addEventListener('click', loadProducts);
+        document.querySelector('#refresh-messages').addEventListener('click', loadMessages);
+        document.querySelector('#logout-button').addEventListener('click', showLogin);
+        if (token) showDashboard();
+    </script>
+</body>
+</html>
