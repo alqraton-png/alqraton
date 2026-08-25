@@ -150,7 +150,7 @@ nav a:hover {
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 4px;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
 }
 
 .hero h1 {
@@ -757,6 +757,27 @@ footer {
         position: relative;
     }
 
+    .hero {
+        min-height: auto;
+        padding: 8px 0 35px;
+    }
+
+    .hero .container {
+        gap: 12px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero-visual {
+        order: 2;
+        width: 100%;
+    }
+
+    .hero-content {
+        order: 1;
+        width: 100%;
+    }
+
     .logo {
         width: 140px;
         height: 48px;
@@ -793,32 +814,64 @@ footer {
     }
 
     .hero h1 {
-        font-size: 58px;
-        letter-spacing: -3px;
+        font-size: clamp(22px, 8vw, 29px);
+        letter-spacing: -1.5px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .hero-label {
+        margin-bottom: 6px;
+    }
+
+    .hero p {
+        margin-top: 16px;
+        font-size: 15px;
+    }
+
+    .hero-buttons {
+        gap: 10px;
+        margin-top: 22px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 11px 16px;
+        font-size: 13px;
     }
 
     .hero-visual {
         display: flex;
-        height: 390px;
+        height: 245px;
     }
 
     .hero-slider {
-        height: 390px;
+        height: 245px;
     }
 
     .slide-shape {
-        width: 300px;
-        height: 300px;
+        width: 185px;
+        height: 185px;
     }
 
     .hero-card {
-        width: 220px;
-        height: 290px;
-        padding: 28px;
+        width: 150px;
+        height: 200px;
+        padding: 20px;
     }
 
     .hero-card strong {
-        font-size: 31px;
+        font-size: 23px;
+    }
+
+    .hero-card span {
+        font-size: 11px;
+        letter-spacing: 2px;
+    }
+
+    .hero-card small {
+        margin-top: 15px;
+        font-size: 11px;
     }
 
     .slider-controls {
